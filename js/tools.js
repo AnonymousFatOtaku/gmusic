@@ -1,6 +1,5 @@
 (function (w) {
   w.tools = {};
-
   tools.addClass = function (node, className) {
     var reg = new RegExp("\\b" + className + "\\b");
     if (!reg.test(node.className)) {

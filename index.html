@@ -13,7 +13,7 @@
     <div class="head-top">
       <!-- logo -->
       <h1 class="logo">
-        <a href="http://www.atguigu.com">
+        <a href="http://www.yinyuetai.com/">
           <img src="img/logo.png"/>
         </a>
       </h1>
@@ -37,43 +37,56 @@
         <a href="javascript:;">首页</a>
       </li>
       <li>
-        <a href="javascript:;">MV</a>
-      </li>
-      <li>
-        <a href="javascript:;">悦单</a>
+        <a href="javascript:;">频道</a>
       </li>
       <li>
         <a href="javascript:;">V榜</a>
       </li>
       <li>
-        <a href="javascript:;">音乐</a>
-      </li>
-      <li>
         <a href="javascript:;">商城</a>
       </li>
       <li>
-        <a href="javascript:;">节目</a>
+        <a href="javascript:;">众筹</a>
       </li>
       <li>
-        <a href="javascript:;">饭团</a>
-      </li>
-      <li>
-        <a href="javascript:;">咨询</a>
-      </li>
-      <li>
-        <a href="javascript:;">我的家</a>
+        <a href="javascript:;">悦单</a>
       </li>
       <li>
         <a href="javascript:;">APP下载</a>
       </li>
-      <li>
-        <a href="javascript:;">热门应用</a>
-      </li>
     </ul>
+  </div>
+  <div class="content">
+    <div class="nav">
+      <ul class="list">
+        <li class="active">
+          <a href="javascript:;">首页</a>
+        </li>
+        <li>
+          <a href="javascript:;">频道</a>
+        </li>
+        <li>
+          <a href="javascript:;">V榜</a>
+        </li>
+        <li>
+          <a href="javascript:;">商城</a>
+        </li>
+        <li>
+          <a href="javascript:;">众筹</a>
+        </li>
+        <li>
+          <a href="javascript:;">悦单</a>
+        </li>
+        <li>
+          <a href="javascript:;">APP下载</a>
+        </li>
+      </ul>
+    </div>
   </div>
 </div>
 </body>
 <script src="js/tools.js"></script>
+<script src="js/test.js"></script>
 <script type="text/javascript">
   window.onload = function () {
     document.addEventListener("touchstart", function (ev) {
@@ -88,6 +101,57 @@
       document.head.appendChild(styleNode);
     })()
 
+    drag();
+
+    function drag() {
+      // 滑屏区域
+      var wrap = document.querySelector("#wrap .content .nav");
+      // 滑屏元素
+      var item = document.querySelector("#wrap .content .nav .list");
+
+      // 元素一开始的位置和手指一开始的位置
+      var startX = 0;
+      var elementX = 0;
+      var minX = wrap.clientWidth - item.offsetWidth;
+      wrap.addEventListener("touchstart", function (ev) {
+        ev = ev || event;
+        var touchC = ev.changedTouches[0];
+        startX = touchC.clientX;
+        elementX = test.css(item, "translateX");
+        item.style.transition = "none";
+      })
+
+      wrap.addEventListener("touchmove", function (ev) {
+        ev = ev || event;
+        var touchC = ev.changedTouches[0];
+        var nowX = touchC.clientX;
+        var disX = nowX - startX;
+        var translateX = elementX + disX;
+
+        // 橡皮筋效果，在move的过程中每一次touchmove真正的有效距离慢慢变小，元素的滑动距离还是在变大
+        if (translateX > 0) {
+          var scale = document.documentElement.clientWidth / ((document.documentElement.clientWidth + translateX) * 1.5);
+          translateX = elementX + disX * scale;
+        } else if (translateX < minX) {
+          var over = minX - translateX;
+          var scale = document.documentElement.clientWidth / ((document.documentElement.clientWidth + over) * 1.5);
+          translateX = elementX + disX * scale;
+        }
+        test.css(item, "translateX", translateX);
+      })
+
+      wrap.addEventListener("touchend", function (ev) {
+        var translateX = test.css(item, "translateX");
+        item.style.transition = "1s transform";
+        if (translateX > 0) {
+          translateX = 0;
+          test.css(item, "translateX", translateX);
+        } else if (translateX < minX) {
+          translateX = minX;
+          test.css(item, "translateX", translateX);
+        }
+      })
+    }
 
     changeFocus()
 
@@ -103,7 +167,6 @@
         inputText.blur();
       })
     }
-
 
     CMCFMenuBtn();
 
