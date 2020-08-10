@@ -45,19 +45,18 @@
       return val;
     }
   }
+
   w.test.carousel = function (arr) {
     // 布局
     var carouselWrap = document.querySelector(".carousel-wrap");
     if (carouselWrap) {
       var pointslength = arr.length;
-
       // 无缝
       var needCarousel = carouselWrap.getAttribute("needCarousel");
       needCarousel = needCarousel == null ? false : true;
       if (needCarousel) {
         arr = arr.concat(arr);
       }
-
       var ulNode = document.createElement("ul");
       var styleNode = document.createElement("style");
       ulNode.classList.add("list");
@@ -67,12 +66,10 @@
       styleNode.innerHTML = ".carousel-wrap > .list > li{width: " + (1 / arr.length * 100) + "%;}.carousel-wrap > .list{width: " + arr.length + "00%}";
       carouselWrap.appendChild(ulNode);
       document.head.appendChild(styleNode);
-
       var imgNodes = document.querySelector(".carousel-wrap > .list > li > a >img");
       setTimeout(function () {
         carouselWrap.style.height = imgNodes.offsetHeight + "px";
       }, 100)
-
       var pointsWrap = document.querySelector(".carousel-wrap > .points-wrap");
       if (pointsWrap) {
         for (var i = 0; i < pointslength; i++) {
@@ -85,26 +82,35 @@
         var pointsSpan = document.querySelectorAll(".carousel-wrap > .points-wrap > span");
       }
 
-      /*
-       * 滑屏
+      /* 滑屏
        * 1.获取元素一开始的位置
        * 2.获取手指一开始点击的位置
        * 3.获取手指move的实时距离
        * 4.将手指移动的距离加给元素
        * */
+      /*
+       * 防抖动
+       * 1.判断用户首次滑屏的方向
+       * 2.如果是x轴则以后不管用户怎么滑都会抖动
+       * 3.如果是y轴则以后不管用户怎么滑都不会抖动
+       * */
       var index = 0;
       // 手指一开始的位置
       var startX = 0;
+      var startY = 0;
       // 元素一开始的位置
       var elementX = 0;
+      var elementY = 0;
+      // 首次滑屏的方向
+      var isX = true;
+      var isFirst = true;
+
       carouselWrap.addEventListener("touchstart", function (ev) {
         ev = ev || event;
         var TouchC = ev.changedTouches[0];
         ulNode.style.transition = "none";
-
-        // 无缝，点击第一组的第一张时瞬间跳到第二组的第一张，点击第二组的最后一张时瞬间跳到第一组的最后一张
+        // 无缝
         if (needCarousel) {
-          // index代表ul的位置
           var index = test.css(ulNode, "translateX") / document.documentElement.clientWidth;
           if (-index === 0) {
             index = -pointslength;
@@ -115,25 +121,49 @@
         }
 
         startX = TouchC.clientX;
+        startY = TouchC.clientY;
         elementX = test.css(ulNode, "translateX");
+        elementY = test.css(ulNode, "translateY");
 
         // 清除定时器
         clearInterval(timer);
+
+        isX = true;
+        isFirst = true;
       })
       carouselWrap.addEventListener("touchmove", function (ev) {
+        // 二次以后的防抖动
+        if (!isX) {
+          // 获取
+          return;
+        }
         ev = ev || event;
         var TouchC = ev.changedTouches[0];
         var nowX = TouchC.clientX;
+        var nowY = TouchC.clientY;
         var disX = nowX - startX;
+        var disY = nowY - startY;
+
+        // 首次判断用户的滑动方向
+        if (isFirst) {
+          isFirst = false;
+          // 判断用户的滑动方向
+          // x则放行，y则首次获取并且下次也获取
+          if (Math.abs(disY) > Math.abs(disX)) {
+            // y轴上滑
+            isX = false;
+            // 首次防抖动
+            return;
+          }
+        }
+
         test.css(ulNode, "translateX", elementX + disX);
       })
       carouselWrap.addEventListener("touchend", function (ev) {
         ev = ev || event;
-        // index抽象了ul的实时位置
         index = test.css(ulNode, "translateX") / document.documentElement.clientWidth;
         index = Math.round(index);
 
-        // 超出控制
         if (index > 0) {
           index = 0;
         } else if (index < 1 - arr.length) {
@@ -145,7 +175,6 @@
         ulNode.style.transition = ".5s transform";
         test.css(ulNode, "translateX", index * (document.documentElement.clientWidth));
 
-        // 开启自动轮播
         if (needAuto) {
           auto();
         }
@@ -167,7 +196,9 @@
             index = 1 - arr.length / 2;
             test.css(ulNode, "translateX", index * document.documentElement.clientWidth);
           }
+
           setTimeout(function () {
+            console.log(index)
             index--;
             ulNode.style.transition = "1s transform";
             littlePoint(index);
@@ -186,5 +217,97 @@
         pointsSpan[-index % pointslength].classList.add("active");
       }
     }
+  }
+  w.test.dragNav = function () {
+    // 滑屏区域
+    var wrap = document.querySelector(".test-nav-drag-wrapper");
+    // 滑屏元素
+    var item = document.querySelector(".test-nav-drag-wrapper .list");
+
+    // 元素一开始的位置和手指一开始的位置
+    var startX = 0;
+    var elementX = 0;
+    var minX = wrap.clientWidth - item.offsetWidth;
+    // 快速滑屏的必要参数
+    var lastTime = 0;
+    var lastPoint = 0;
+    var timeDis = 1;
+    var pointDis = 0;
+
+    wrap.addEventListener("touchstart", function (ev) {
+      ev = ev || event;
+      var touchC = ev.changedTouches[0];
+      startX = touchC.clientX;
+      elementX = test.css(item, "translateX");
+      item.style.transition = "none";
+      lastTime = new Date().getTime();
+      lastPoint = touchC.clientX;
+      // 清除速度的残留
+      pointDis = 0;
+      item.handMove = false;
+    })
+
+    wrap.addEventListener("touchmove", function (ev) {
+      ev = ev || event;
+      var touchC = ev.changedTouches[0];
+      var nowX = touchC.clientX;
+      var disX = nowX - startX;
+      var translateX = elementX + disX;
+      var nowTime = new Date().getTime();
+      var nowPoint = touchC.clientX;
+      timeDis = nowTime - lastTime;
+      // pointDis：整个手指touchmove真正的有效距
+      pointDis = nowPoint - lastPoint;
+      lastTime = nowTime;
+      lastPoint = nowPoint;
+
+      // 手动橡皮筋效果，在move的过程中每一次手指touchmove真正的有效距离慢慢变小，元素的滑动距离还是在变大
+      if (translateX > 0) {
+        item.handMove = true;
+        var scale = document.documentElement.clientWidth / ((document.documentElement.clientWidth + translateX) * 1.5);
+        translateX = test.css(item, "translateX") + pointDis * scale;
+      } else if (translateX < minX) {
+        item.handMove = true;
+        var over = minX - translateX;
+        var scale = document.documentElement.clientWidth / ((document.documentElement.clientWidth + over) * 1.5);
+        translateX = test.css(item, "translateX") + pointDis * scale;
+      }
+      test.css(item, "translateX", translateX);
+    })
+
+    wrap.addEventListener("touchend", function (ev) {
+      var translateX = test.css(item, "translateX");
+      if (!item.handMove) {
+        // 快速滑屏，速度越大位移越远
+        var speed = pointDis / timeDis;
+        speed = Math.abs(speed) < 0.5 ? 0 : speed;
+        var targetX = translateX + speed * 200;
+        var time = Math.abs(speed) * 0.2;
+        time = time < 0.8 ? 0.8 : time;
+        time = time > 2 ? 2 : time;
+        // 快速滑屏的橡皮筋效果
+        var bsr = "";
+        if (targetX > 0) {
+          targetX = 0;
+          bsr = "cubic-bezier(.26,1.51,.68,1.54)";
+        } else if (targetX < minX) {
+          targetX = minX;
+          bsr = "cubic-bezier(.26,1.51,.68,1.54)";
+        }
+        item.style.transition = time + "s " + bsr + " transform";
+        test.css(item, "translateX", targetX);
+      } else {
+        // 手动橡皮筋效果
+        item.style.transition = "1s transform";
+        if (translateX > 0) {
+          translateX = 0;
+          test.css(item, "translateX", translateX);
+        } else if (translateX < minX) {
+          translateX = minX;
+          test.css(item, "translateX", translateX);
+        }
+
+      }
+    })
   }
 })(window)
