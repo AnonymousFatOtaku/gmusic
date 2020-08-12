@@ -310,4 +310,178 @@
       }
     })
   }
+
+  // 防抖动&即点即停
+  /*
+   * transiton的问题
+   * 1.元素没有渲染完成时无法触发过渡
+   * 2.在transform切换下，如果前后transform属性值、变换函数的位置个数不一样无法触发过渡
+   * 3.没有办法拿到transition中任何一帧的状态
+   * 4.Tween算法
+   * */
+  w.test.vMove = function (wrap, callBack) {
+    // 滑屏区域
+    // 滑屏元素
+    var item = wrap.children[0];
+    test.css(item, "translateZ", 0.1);
+
+    // 元素一开始的位置和手指一开始的位置
+    var start = {};
+    var element = {};
+    var minY = wrap.clientHeight - item.offsetHeight;
+
+    // 快速滑屏的必要参数
+    var lastTime = 0;
+    var lastPoint = 0;
+    var timeDis = 1;
+    var pointDis = 0;
+    var isY = true;
+    var isFirst = true;
+
+    // 即点即停
+    var cleartime = 0;
+    var Tween = {
+      Linear: function (t, b, c, d) {
+        return c * t / d + b;
+      },
+      back: function (t, b, c, d, s) {
+        if (s == undefined) s = 1.70158;
+        return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+      }
+    }
+    wrap.addEventListener("touchstart", function (ev) {
+      ev = ev || event;
+      var touchC = ev.changedTouches[0];
+
+      // 重置minY
+      minY = wrap.clientHeight - item.offsetHeight;
+      start = {clientX: touchC.clientX, clientY: touchC.clientY};
+      element.y = test.css(item, "translateY");
+      element.x = test.css(item, "translateX");
+      item.style.transition = "none";
+      lastTime = new Date().getTime();
+      lastPoint = touchC.clientY;
+
+      // 清除速度的残留
+      pointDis = 0;
+      item.handMove = false;
+      isY = true;
+      isFirst = true;
+
+      //即点即停
+      clearInterval(cleartime);
+
+      if (callBack && typeof callBack["start"] === "function") {
+        callBack["start"].call(item);
+      }
+    })
+
+    wrap.addEventListener("touchmove", function (ev) {
+      if (!isY) {
+        return;
+      }
+
+      ev = ev || event;
+      var touchC = ev.changedTouches[0];
+      var now = touchC;
+      var dis = {};
+      dis.y = now.clientY - start.clientY;
+      dis.x = now.clientX - start.clientX;
+      var translateY = element.y + dis.y;
+
+      if (isFirst) {
+        isFirst = false;
+        if (Math.abs(dis.x) > Math.abs(dis.y)) {
+          isY = false;
+          return;
+        }
+      }
+
+      var nowTime = new Date().getTime();
+      var nowPoint = touchC.clientY;
+      timeDis = nowTime - lastTime;
+      pointDis = nowPoint - lastPoint;
+      lastTime = nowTime;
+      lastPoint = nowPoint;
+
+      // 手动橡皮筋效果
+      if (translateY > 0) {
+        item.handMove = true;
+        var scale = document.documentElement.clientHeight / ((document.documentElement.clientHeight + translateY) * 1.5);
+        translateY = test.css(item, "translateY") + pointDis * scale;
+      } else if (translateY < minY) {
+        item.handMove = true;
+        var over = minY - translateY;
+        var scale = document.documentElement.clientHeight / ((document.documentElement.clientHeight + over) * 1.5);
+        translateY = test.css(item, "translateY") + pointDis * scale;
+      }
+      test.css(item, "translateY", translateY);
+
+      if (callBack && typeof callBack["move"] === "function") {
+        callBack["move"].call(item);
+      }
+    })
+
+    wrap.addEventListener("touchend", function (ev) {
+      var translateY = test.css(item, "translateY");
+      if (!item.handMove) {
+        // 快速滑屏，速度越大位移越远
+        var speed = pointDis / timeDis;
+        speed = Math.abs(speed) < 0.5 ? 0 : speed;
+        var targetY = translateY + speed * 200;
+        var time = Math.abs(speed) * 0.2;
+        time = time < 0.8 ? 0.8 : time;
+        time = time > 2 ? 2 : time;
+        // 快速滑屏的橡皮筋效果
+        var type = "Linear";
+        if (targetY > 0) {
+          targetY = 0;
+          type = "back";
+        } else if (targetY < minY) {
+          targetY = minY;
+          type = "back";
+        }
+        bsr(type, targetY, time);
+      } else {
+        // 手动橡皮筋效果
+        item.style.transition = "1s transform";
+        if (translateY > 0) {
+          translateY = 0;
+          test.css(item, "translateY", translateY);
+        } else if (translateY < minY) {
+          translateY = minY;
+          test.css(item, "translateY", translateY);
+        }
+        if (callBack && typeof callBack["end"] === "function") {
+          callBack["end"].call(item);
+        }
+      }
+    })
+
+    function bsr(type, targetY, time) {
+      clearInterval(cleartime);
+      // 当前次数
+      var t = 0;
+      // 初始位置
+      var b = test.css(item, "translateY");
+      // 最终位置-初始位置
+      var c = targetY - b;
+      // 总次数
+      var d = time * 1000 / (1000 / 60);
+      cleartime = setInterval(function () {
+        t++;
+        if (callBack && typeof callBack["autoMove"] === "function") {
+          callBack["move"].call(item);
+        }
+        if (t > d) {
+          clearInterval(cleartime);
+          if (callBack && typeof callBack["end"] === "function") {
+            callBack["end"].call(item);
+          }
+        }
+        var point = Tween[type](t, b, c, d);
+        test.css(item, "translateY", point);
+      }, 1000 / 60);
+    }
+  }
 })(window)

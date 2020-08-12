@@ -9,6 +9,7 @@
 </head>
 <body>
 <div id="wrap">
+  <div class="scrollBar"></div>
   <div class="head">
     <div class="head-top">
       <!-- logo -->
@@ -328,17 +329,78 @@
 <script src="js/test.js"></script>
 <script type="text/javascript">
   window.onload = function () {
+    // 全局事件默认行为的禁止
     document.addEventListener("touchstart", function (ev) {
       ev = ev || event;
       ev.preventDefault();
     })
 
+    // rem适配方案
     ;(function () {
       var styleNode = document.createElement("style");
       var w = document.documentElement.clientWidth / 16;
       styleNode.innerHTML = "html{font-size:" + w + "px!important}";
       document.head.appendChild(styleNode);
     })()
+
+    // 头部效果
+    var aNodes = document.querySelectorAll("#wrap .head .head-top .btns a");
+    var headBottom = document.querySelector("#wrap .head .head-bottom");
+    var bar = document.querySelector("#wrap .scrollBar");
+    var head = document.querySelector("#wrap .head");
+    var h = head.offsetHeight;
+    var flag = true;
+    aNodes[0].addEventListener("touchend", function () {
+      // 滚动条滚过头部高度时
+      if (test.css(bar, "translateY") > h) {
+        if (flag) {
+          headBottom.style.display = "none";
+        } else {
+          headBottom.style.display = "block";
+        }
+        flag = !flag;
+      }
+    })
+
+    // 竖向滑屏
+    vMove();
+
+    function vMove() {
+      var headBottom = document.querySelector("#wrap .head .head-bottom");
+      var head = document.querySelector("#wrap .head");
+      var h = head.offsetHeight;
+      var content = document.querySelector("#wrap .content");
+      var wrap = document.querySelector("#wrap .content > div");
+      var bar = document.querySelector("#wrap .scrollBar");
+      var scale = document.documentElement.clientHeight / (head.offsetHeight + wrap.offsetHeight);
+      bar.style.height = document.documentElement.clientHeight * scale + "px";
+      var callback = {
+        start: function () {
+          bar.style.opacity = 1;
+        },
+        move: function () {
+          var scale = test.css(this, "translateY") / (wrap.offsetHeight - content.clientHeight);
+          // scale=实时距离/最大距离
+          test.css(bar, "translateY", -scale * (document.documentElement.clientHeight - bar.offsetHeight));
+          if (test.css(bar, "translateY") > h) {
+            headBottom.style.display = "none";
+            flag = false;
+          } else if (test.css(bar, "translateY") < h) {
+            headBottom.style.display = "block";
+            flag = true;
+          }
+        },
+        autoMove: function () {
+          var scale = test.css(this, "translateY") / (wrap.offsetHeight - content.clientHeight);
+          // scale=实时距离/最大距离
+          test.css(bar, "translateY", -scale * (document.documentElement.clientHeight - bar.offsetHeight));
+        },
+        end: function () {
+          bar.style.opacity = 0;
+        }
+      }
+      test.vMove(content, callback);
+    }
 
     // tap选项卡
     tap();
@@ -378,6 +440,8 @@
           }
           ev = ev || event;
           var touchC = ev.changedTouches[0];
+          // 快照
+          startPoint = touchC;
           startPoint.x = touchC.clientX;
           startPoint.y = touchC.clientY;
           elementPoint.x = test.css(content, "translateX");
@@ -397,12 +461,11 @@
 
           ev = ev || event;
           var touchC = ev.changedTouches[0];
-          var nowPoint = {x: 0, y: 0};
+          var nowPoint = {};
           var dis = {x: 0, y: 0};
-          nowPoint.x = touchC.clientX;
-          nowPoint.y = touchC.clientY;
-          dis.x = nowPoint.x - startPoint.x;
-          dis.y = nowPoint.y - startPoint.y;
+          nowPoint = touchC;
+          dis.x = nowPoint.clientX - startPoint.clientX;
+          dis.y = nowPoint.clientY - startPoint.clientY;
 
           if (isFirst) {
             isFirst = false;
@@ -423,10 +486,10 @@
           }
           ev = ev || event;
           var touchC = ev.changedTouches[0];
-          var nowPoint = {x: 0, y: 0};
+          var nowPoint = {};
           var dis = {x: 0, y: 0};
-          nowPoint.x = touchC.clientX;
-          dis.x = nowPoint.x - startPoint.x;
+          nowPoint = touchC;
+          dis.x = nowPoint.clientX - startPoint.clientX;
           if (Math.abs(dis.x) <= w / 2) {
             content.style.transition = "1s transform";
             test.css(content, "translateX", -w);

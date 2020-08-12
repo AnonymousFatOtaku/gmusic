@@ -170,9 +170,8 @@ img {
 #wrap .head {
   position: absolute;
   width: 100%;
-  height: 100px;
   background: #232323;
-  height: 4rem;
+  z-index: 8;
 }
 
 #wrap .head .head-top {
@@ -324,8 +323,6 @@ img {
   bottom: 0;
   left: 0;
   right: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 #wrap .content .tap-wrap {
@@ -437,5 +434,17 @@ img {
   background: url(../img/loading.gif) no-repeat;
   background-position: center;
   height: 10rem;
+  opacity: 0;
+}
+
+#wrap .scrollBar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: deeppink;
+  z-index: 9;
+  transition: 1s opacity;
   opacity: 0;
 }
